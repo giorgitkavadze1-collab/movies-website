@@ -106,11 +106,24 @@ async function fetchFromAPI(params) {
     try {
         const url = `${API_URL}?apikey=${API_KEY}&${params}`;
         const response = await fetch(url);
-        const data = await response.json();
-        return data;
+        
+        // Check if response is OK
+        if (!response.ok) {
+            console.error(`API returned ${response.status}: ${response.statusText}`);
+            return { Response: 'False', Error: `Service unavailable (${response.status}). Please check your API key or try again later.` };
+        }
+        
+        // Try to parse JSON
+        const text = await response.text();
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            console.error('Invalid JSON response:', text.substring(0, 100));
+            return { Response: 'False', Error: 'Invalid response from API. Service may be down.' };
+        }
     } catch (error) {
         console.error('API Error:', error);
-        return null;
+        return { Response: 'False', Error: 'Network error. Please check your connection.' };
     }
 }
 
@@ -120,7 +133,20 @@ async function fetchMovieById(id) {
 
 async function searchMovies(query, type = '') {
     const typeParam = type ? `&type=${type}` : '';
-    return await fetchFromAPI(`s=${encodeURIComponent(query)}${typeParam}`);
+    const data = await fetchFromAPI(`s=${encodeURIComponent(query)}${typeParam}`);
+    
+    if (data && data.Response === 'True' && data.Search) {
+        const movieDetailsPromises = data.Search.slice(0, 12).map(movie => 
+            fetchMovieById(movie.imdbID)
+        );
+        const moviesWithDetails = await Promise.all(movieDetailsPromises);
+        return {
+            Response: 'True',
+            Search: moviesWithDetails.filter(movie => movie && movie.Response === 'True')
+        };
+    }
+    
+    return data;
 }
 
 async function performSearch() {
@@ -267,7 +293,7 @@ function displayMovies(container, movies) {
     let html = '';
     movies.forEach(movie => {
         const isFavorite = favorites.some(fav => fav.imdbID === movie.imdbID);
-        const rating = movie.imdbRating !== 'N/A' ? movie.imdbRating : 'N/A';
+        const rating = movie.imdbRating && movie.imdbRating !== 'N/A' ? movie.imdbRating : 'N/A';
         
         html += `
             <div class="movie-card" data-id="${movie.imdbID}">
@@ -465,4 +491,3 @@ function animateStats() {
 
 console.log('🎬 CineVerse initialized successfully!');
 console.log('💡 Tip: Press Ctrl/Cmd + K to quickly search for movies');
-
