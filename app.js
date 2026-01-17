@@ -1,4 +1,4 @@
-const API_KEY = '8e530280';
+const API_KEY = '28457a85';
 const API_URL = 'https://www.omdbapi.com/';
 
 let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
@@ -465,3 +465,4 @@ function animateStats() {
 
 console.log('🎬 CineVerse initialized successfully!');
 console.log('💡 Tip: Press Ctrl/Cmd + K to quickly search for movies');
+
